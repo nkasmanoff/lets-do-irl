@@ -3,6 +3,19 @@ import numpy as np
 from utils.utils import get_entropy, log_prob_density
 
 def train_discrim(discrim, memory, discrim_optim, demonstrations, args):
+    """
+    Training the discriminator. 
+
+    Inputs the discriminaotr and it's irl rewards, but it makes the irl rewards? 
+
+    It does make the irl rewards, but we want both the discrim and discrim rewards here. 
+
+    Why? 
+    Goal of discrim is to do bce loss on learner and expert.
+
+    Should go through step by step, but the idea is to make learner look bad? That way it improves  
+
+    """
     memory = np.array(memory) 
     states = np.vstack(memory[:, 0]) 
     actions = list(memory[:, 1]) 
@@ -31,6 +44,13 @@ def train_discrim(discrim, memory, discrim_optim, demonstrations, args):
 
 
 def train_actor_critic(actor, critic, memory, actor_optim, critic_optim, args):
+    """
+    Using get gae, this is basically trpo, or perhaps ppo . 
+
+    It's somewhat straightforward, and trained with the irl reward which is 
+    from that memory versus what would usually be the real reward. 
+
+    """
     memory = np.array(memory) 
     states = np.vstack(memory[:, 0]) 
     actions = list(memory[:, 1]) 

@@ -18,6 +18,9 @@ def log_prob_density(x, mu, std):
     return log_prob_density.sum(1, keepdim=True)
 
 def get_reward(discrim, state, action):
+    """
+    The reward function according to irl. It's log D(s,a). 
+    """
     state = torch.Tensor(state)
     action = torch.Tensor(action)
     state_action = torch.cat([state, action])

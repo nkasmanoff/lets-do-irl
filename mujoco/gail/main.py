@@ -86,6 +86,7 @@ def main():
         saved_ckpt_path = os.path.join(os.getcwd(), 'save_model', str(args.load_model))
         ckpt = torch.load(saved_ckpt_path)
 
+        # initialize everything
         actor.load_state_dict(ckpt['actor'])
         critic.load_state_dict(ckpt['critic'])
         discrim.load_state_dict(ckpt['discrim'])
@@ -101,6 +102,7 @@ def main():
     train_discrim_flag = True
 
     for iter in range(args.max_iter_num):
+        # i trajectories 
         actor.eval(), critic.eval()
         memory = deque()
 
@@ -108,6 +110,7 @@ def main():
         scores = []
 
         while steps < args.total_sample_size: 
+            # sample trajectories from generator actor 
             state = env.reset()
             score = 0
 
@@ -138,6 +141,9 @@ def main():
 
                 if done:
                     break
+                #actual sampling done here 
+
+
             
             episodes += 1
             scores.append(score)
@@ -148,10 +154,12 @@ def main():
 
         actor.train(), critic.train(), discrim.train()
         if train_discrim_flag:
+            # for training the discriminator 
             expert_acc, learner_acc = train_discrim(discrim, memory, discrim_optim, demonstrations, args)
             print("Expert: %.2f%% | Learner: %.2f%%" % (expert_acc * 100, learner_acc * 100))
             if expert_acc > args.suspend_accu_exp and learner_acc > args.suspend_accu_gen:
                 train_discrim_flag = False
+        #for training actor critic 
         train_actor_critic(actor, critic, memory, actor_optim, critic_optim, args)
 
         if iter % 100:
