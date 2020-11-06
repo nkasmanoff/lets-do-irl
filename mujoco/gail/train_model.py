@@ -6,10 +6,6 @@ def train_discrim(discrim, memory, discrim_optim, demonstrations, args):
     """
     Training the discriminator. 
 
-    Inputs the discriminaotr and it's irl rewards, but it makes the irl rewards? 
-
-    It does make the irl rewards, but we want both the discrim and discrim rewards here. 
-
     Why? 
     Goal of discrim is to do bce loss on learner and expert.
 
@@ -18,7 +14,7 @@ def train_discrim(discrim, memory, discrim_optim, demonstrations, args):
     """
     memory = np.array(memory) 
     states = np.vstack(memory[:, 0]) 
-    actions = list(memory[:, 1]) 
+    actions = list(memory[:, 1]) #actions taken by actor/policy
 
     states = torch.Tensor(states)
     actions = torch.Tensor(actions)
@@ -26,19 +22,21 @@ def train_discrim(discrim, memory, discrim_optim, demonstrations, args):
     criterion = torch.nn.BCELoss()
 
     for _ in range(args.discrim_update_num):
-        learner = discrim(torch.cat([states, actions], dim=1))
-        demonstrations = torch.Tensor(demonstrations)
+        learner = discrim(torch.cat([states, actions], dim=1)) #pass (s,a) through discriminator
+        demonstrations = torch.Tensor(demonstrations) # pass (s,a) of expert through discriminator
         expert = discrim(demonstrations)
 
         discrim_loss = criterion(learner, torch.ones((states.shape[0], 1))) + \
                         criterion(expert, torch.zeros((demonstrations.shape[0], 1)))
-                
+                # discrim loss: predict agent is all wrong, get as close to 0, and predict expert is 1, getting as close to 1 as possible. 
         discrim_optim.zero_grad()
         discrim_loss.backward()
         discrim_optim.step()
 
-    expert_acc = ((discrim(demonstrations) < 0.5).float()).mean()
-    learner_acc = ((discrim(torch.cat([states, actions], dim=1)) > 0.5).float()).mean()
+        # take these steps, do it however many times specified. 
+
+    expert_acc = ((discrim(demonstrations) < 0.5).float()).mean() #how often it realized the fake examples were fake
+    learner_acc = ((discrim(torch.cat([states, actions], dim=1)) > 0.5).float()).mean() #how often if predicted expert correctly. 
 
     return expert_acc, learner_acc
 

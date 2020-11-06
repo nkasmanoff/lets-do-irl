@@ -61,11 +61,13 @@ def main():
 
     num_inputs = env.observation_space.shape[0]
     num_actions = env.action_space.shape[0]
-    running_state = ZFilter((num_inputs,), clip=5)
+    running_state = ZFilter((num_inputs,), clip=5) # huh? 
+    # oh wow. ZFilter is exactly what I do in capstone project, removing "badtimes"
 
     print('state size:', num_inputs) 
     print('action size:', num_actions)
 
+    #load agent stuff 
     actor = Actor(num_inputs, num_actions, args)
     critic = Critic(num_inputs, args)
     discrim = Discriminator(num_inputs + num_actions, args)
@@ -82,6 +84,7 @@ def main():
     
     writer = SummaryWriter(args.logdir)
 
+    #if you aren't starting from scratch, load in this 
     if args.load_model is not None:
         saved_ckpt_path = os.path.join(os.getcwd(), 'save_model', str(args.load_model))
         ckpt = torch.load(saved_ckpt_path)
@@ -97,12 +100,12 @@ def main():
 
         print("Loaded OK ex. Zfilter N {}".format(running_state.rs.n))
 
-    
+    # if no old model no worries, start training. 
     episodes = 0
     train_discrim_flag = True
 
     for iter in range(args.max_iter_num):
-        # i trajectories 
+        # for i total trajectories 
         actor.eval(), critic.eval()
         memory = deque()
 
@@ -110,34 +113,35 @@ def main():
         scores = []
 
         while steps < args.total_sample_size: 
-            # sample trajectories from generator actor 
+            # sample trajectories  (batch size)
             state = env.reset()
             score = 0
 
-            state = running_state(state)
+            state = running_state(state) #uh.. again ZFilter related, cleans the state 
             
             for _ in range(10000): 
-                if args.render:
+                #run through environment
+                if args.render: 
                     env.render()
 
                 steps += 1
 
-                mu, std = actor(torch.Tensor(state).unsqueeze(0))
-                action = get_action(mu, std)[0]
-                next_state, reward, done, _ = env.step(action)
-                irl_reward = get_reward(discrim, state, action)
+                mu, std = actor(torch.Tensor(state).unsqueeze(0)) #pass state through actor network
+                action = get_action(mu, std)[0] #compute random action
+                next_state, reward, done, _ = env.step(action) #take a step
+                irl_reward = get_reward(discrim, state, action) #infer what the reward of this action is based on discriminator's get reward 
 
                 if done:
                     mask = 0
                 else:
-                    mask = 1
+                    mask = 1 #if done, save this, 
 
                 memory.append([state, action, irl_reward, mask])
 
-                next_state = running_state(next_state)
-                state = next_state
+                next_state = running_state(next_state) #save cleaned next state
+                state = next_state #and set to current state, 
 
-                score += reward
+                score += reward #add total reward
 
                 if done:
                     break
@@ -148,19 +152,19 @@ def main():
             episodes += 1
             scores.append(score)
         
-        score_avg = np.mean(scores)
+        score_avg = np.mean(scores) #how this model did, 
         print('{}:: {} episode score is {:.2f}'.format(iter, episodes, score_avg))
-        writer.add_scalar('log/score', float(score_avg), iter)
+        writer.add_scalar('log/score', float(score_avg), iter) #logg
 
-        actor.train(), critic.train(), discrim.train()
-        if train_discrim_flag:
+        actor.train(), critic.train(), discrim.train() #now train 
+        if train_discrim_flag: #if this batch optimizes discrim/reward, 
             # for training the discriminator 
-            expert_acc, learner_acc = train_discrim(discrim, memory, discrim_optim, demonstrations, args)
+            expert_acc, learner_acc = train_discrim(discrim, memory, discrim_optim, demonstrations, args) # see comments in train_model. 
             print("Expert: %.2f%% | Learner: %.2f%%" % (expert_acc * 100, learner_acc * 100))
             if expert_acc > args.suspend_accu_exp and learner_acc > args.suspend_accu_gen:
-                train_discrim_flag = False
+                train_discrim_flag = False #now restart, train policy. 
         #for training actor critic 
-        train_actor_critic(actor, critic, memory, actor_optim, critic_optim, args)
+        train_actor_critic(actor, critic, memory, actor_optim, critic_optim, args) # no output, see comments in train_model 
 
         if iter % 100:
             score_avg = int(score_avg)
