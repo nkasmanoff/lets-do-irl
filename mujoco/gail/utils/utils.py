@@ -20,6 +20,8 @@ def log_prob_density(x, mu, std):
 def get_reward(discrim, state, action):
     """
     The reward function according to irl. It's log D(s,a). 
+
+    Key for project. 
     """
     state = torch.Tensor(state)
     action = torch.Tensor(action)
