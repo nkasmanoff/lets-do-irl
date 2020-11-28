@@ -22,9 +22,15 @@ def get_reward(discrim, state, action):
     The reward function according to irl. It's log D(s,a). 
 
     Key for project. 
+    
+    Reward is higher the closer this is to 0, because the more similar it is to an expert action. :
+    Is quite close to imitation learning, but hope here is that with such a large number of expert demonstrations and entropy bonuses etc. it learns more than direct imitation. 
     """
     state = torch.Tensor(state)
-    action = torch.Tensor(action)
+    try:
+        action = torch.Tensor(action)
+    except:
+        pass
     state_action = torch.cat([state, action])
     with torch.no_grad():
         return -math.log(discrim(state_action)[0].item())
